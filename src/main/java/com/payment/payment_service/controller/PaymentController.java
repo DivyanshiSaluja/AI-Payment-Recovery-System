@@ -1,9 +1,11 @@
 package com.payment.payment_service.controller;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
-
+import com.payment.payment_service.model.FraudResponse;
+import com.payment.payment_service.model.PaymentRequest;
+import com.payment.payment_service.model.PaymentResponse;
+import com.payment.payment_service.model.RecoverySuggestionResponse;
+import com.payment.payment_service.service.PaymentService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -12,17 +14,16 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.payment.payment_service.model.FraudResponse;
-import com.payment.payment_service.model.PaymentRequest;
-import com.payment.payment_service.model.PaymentResponse;
-import com.payment.payment_service.model.RecoverySuggestionResponse;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/payment")
 public class PaymentController {
 
-    //Payment Storage
-    private Map<String, PaymentResponse> paymentDatabase = new HashMap<>();
+    @Autowired
+    private PaymentService paymentService;
 
     //Idempotency Storage
     private Map<String, String> idempotencyDatabase = new HashMap<>();
@@ -33,15 +34,15 @@ public class PaymentController {
        // Check duplicate request
        if (idempotencyDatabase.containsKey(idempotencyKey)) {
             String existingTransactionId = idempotencyDatabase.get(idempotencyKey);
-            return paymentDatabase.get(existingTransactionId);
+            return paymentService.getByTransactionId(existingTransactionId);
        }
 
        //Create new transaction
         String transactionId = UUID.randomUUID().toString();
         
         PaymentResponse response = new PaymentResponse(transactionId,"FAILED",0);
-        
-        paymentDatabase.put(transactionId, response);  
+
+        paymentService.savePayment(response);
         
         //Store idempotency key
         idempotencyDatabase.put(idempotencyKey, transactionId);
@@ -51,13 +52,13 @@ public class PaymentController {
     //Get payment status by transaction ID
     @GetMapping("/{transactionId}")
     public PaymentResponse getPaymentStatus(@PathVariable String transactionId) {
-        return paymentDatabase.get(transactionId);
+        return paymentService.getByTransactionId(transactionId);
     }
     
     //RETRY FAILED PAYMENT API
     @PostMapping("/retry/{transactionId}")
     public PaymentResponse retryPayment(@PathVariable String transactionId) {
-        PaymentResponse payment = paymentDatabase.get(transactionId);
+        PaymentResponse payment = paymentService.getByTransactionId(transactionId);
         if(payment!=null && payment.getStatus().equals("FAILED")) {
             payment.setRetryCount(payment.getRetryCount()+1);
             payment.setStatus("RETRYING");
@@ -70,7 +71,7 @@ public class PaymentController {
     @GetMapping("/fraud-check/{transactionId}")
     public FraudResponse fraudCheck(@PathVariable String transactionId) {
         //Mocked response for demonstration
-        PaymentResponse payment = paymentDatabase.get(transactionId);
+        PaymentResponse payment = paymentService.getByTransactionId(transactionId);
         if(payment == null) {
             return new FraudResponse(transactionId, 0.0, false);
         }
@@ -83,14 +84,14 @@ public class PaymentController {
     @GetMapping("/recovery-suggestion/{transactionId}")
     public RecoverySuggestionResponse recoverySuggestion(@PathVariable String transactionId) {
         //Mocked response for demonstration
-        PaymentResponse payment = paymentDatabase.get(transactionId);
-        if(payment == null) {
+        PaymentResponse payment = paymentService.getByTransactionId(transactionId);
+        if (payment == null) {
             return new RecoverySuggestionResponse(transactionId, "Transaction not found", "N/A");
         }
         String suggestion;
         String action;
 
-        if(payment.getRetryCount() == 0) {
+        if (payment.getRetryCount() == 0) {
             suggestion = "Temporary network issue detected.";
             action = "Please retry after 30 seconds.";
         } else if (payment.getRetryCount() < 3) {

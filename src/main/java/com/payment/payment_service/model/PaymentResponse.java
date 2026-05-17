@@ -1,6 +1,19 @@
 package com.payment.payment_service.model;
 
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
+
+@Data
+@Getter
+@Setter
+@Entity
+@Table(name = "payments")
 public class PaymentResponse {
+    @Id
     private String transactionId;
     private String status;
     private int retryCount;

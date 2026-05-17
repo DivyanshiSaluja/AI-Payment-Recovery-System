@@ -1,5 +1,12 @@
 package com.payment.payment_service.model;
 
+import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
+
+@Data
+@Getter
+@Setter
 public class RecoverySuggestionResponse {
     private String transactionId;
     private String suggestion;

@@ -1,5 +1,12 @@
 package com.payment.payment_service.model;
 
+import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
+
+@Data
+@Getter
+@Setter
 public class FraudResponse {
     public String transactionId;
     private double riskScore;
