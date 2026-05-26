@@ -1,9 +1,10 @@
 package com.payment.payment_service.service;
 
 import com.payment.payment_service.model.PaymentResponse;
-import com.payment.payment_service.repository.PaymentRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import com.payment.payment_service.repository.PaymentRepository;
 
 @Service
 public class PaymentService {

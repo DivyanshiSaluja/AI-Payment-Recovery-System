@@ -1,5 +1,6 @@
 package com.payment.payment_service.controller;
 
+import com.google.common.hash.Hashing;
 import com.payment.payment_service.model.FraudResponse;
 import com.payment.payment_service.model.PaymentRequest;
 import com.payment.payment_service.model.PaymentResponse;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -30,8 +32,11 @@ public class PaymentController {
 
     //Payment API with Idempotency
     @PostMapping
-    public PaymentResponse createPayment(@RequestHeader("Idempotency-Key") String idempotencyKey, @RequestBody PaymentRequest request) {
-       // Check duplicate request
+    public PaymentResponse createPayment(@RequestBody PaymentRequest request) {
+       //Generate idempotency key
+       String idempotencyKey = generateIdempotencyKey(request);
+
+        // Check duplicate request
        if (idempotencyDatabase.containsKey(idempotencyKey)) {
             String existingTransactionId = idempotencyDatabase.get(idempotencyKey);
             return paymentService.getByTransactionId(existingTransactionId);
@@ -49,6 +54,12 @@ public class PaymentController {
         return response;
     }
 
+    //Generate Idempotency Key
+    private String generateIdempotencyKey(PaymentRequest request) {
+        String str =  request.getOrderId() + "_" + request.getUserId() + "_" + request.getMerchantId() + "_" + request.getAmount() + "_" + request.getPaymentMethod();
+        String sha256hex = Hashing.sha256().hashString(str, StandardCharsets.UTF_8).toString();
+        return sha256hex;
+    }
     //Get payment status by transaction ID
     @GetMapping("/{transactionId}")
     public PaymentResponse getPaymentStatus(@PathVariable String transactionId) {
